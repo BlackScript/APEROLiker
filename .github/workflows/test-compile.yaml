@@ -64,18 +64,14 @@ jobs:
       - name: Install AsyncTCP (RP2040)
         if: ${{ matrix.core == 'rp2040:rp2040' }}
         run: ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL=true arduino-cli lib install --git-url https://github.com/khoih-prog/AsyncTCP_RP2040W#v1.2.0
+        
+      - name: Install ESPAsyncWebserver
+        if: ${{ matrix.core == 'esp32:esp32' }}
+        run: ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL=true arduino-cli lib install --git-url https://github.com/mathieucarbou/ESPAsyncWebServer
 
-      - name: Build CaptivePortal
-        run: arduino-cli compile --library . --warnings none -b ${{ matrix.board }} "examples/CaptivePortal/CaptivePortal.ino"
+      - name: Build v1.2
+        run: arduino-cli compile --library . --warnings none -b ${{ matrix.board }} "ESP32S2_Aperoliker_V1.2/ESP32S2_Aperoliker_V1.2.ino"
 
-      - name: Build SimpleServer
-        run: arduino-cli compile --library . --warnings none -b ${{ matrix.board }} "examples/SimpleServer/SimpleServer.ino"
-
-      - name: Build Filters
-        run: arduino-cli compile --library . --warnings none -b ${{ matrix.board }} "examples/Filters/Filters.ino"
-
-      - name: Build StreamFiles
-        run: arduino-cli compile --library . --warnings none -b ${{ matrix.board }} "examples/StreamFiles/StreamFiles.ino"
 
   platformio:
     name: "pio:${{ matrix.env }}:${{ matrix.board }}"
