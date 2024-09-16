@@ -33,7 +33,7 @@
 
 // Using the mixer without wifi makes the firmware more stable
 // Uncomment for wifi usage
-#define WIFI_MIXER
+define WIFI_MIXER
 
 //===============================================================
 // Enums
