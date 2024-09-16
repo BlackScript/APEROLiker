@@ -1,135 +1,51 @@
-# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
-
-name: Build
-
+name: LibraryBuild
 on:
-  workflow_dispatch:
-  push:
+  push: # see: https://help.github.com/en/actions/reference/events-that-trigger-workflows#pull-request-event-pull_request
+    paths:
+    - '**.ino'
+    - '**.cpp'
+    - '**.h'
+    - '**LibraryBuild.yml'
   pull_request:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  arduino:
-    name: Arduino
+  build:
+    name: ${{ matrix.arduino-boards-fqbn }} - test compiling examples
     runs-on: ubuntu-latest
+    env:
+      REQUIRED_LIBRARIES: Servo,Adafruit NeoPixel
     strategy:
-      fail-fast: false
       matrix:
+        arduino-boards-fqbn:
+          - arduino:avr:uno
+          - arduino:avr:uno|All-DEBUG
+          - arduino:avr:uno|trace
+          - esp8266:esp8266:huzzah:eesz=4M3M,xtal=80
+
         include:
-          - core: esp32:esp32
-            board: esp32:esp32:esp32
-            index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
-          - core: esp32:esp32
-            board: esp32:esp32:esp32
-            index_url: https://espressif.github.io/arduino-esp32/package_esp32_dev_index.json
+          - arduino-boards-fqbn: arduino:avr:uno
+            sketch-names: ESP32S2_Aperoliker_V1.2.ino # Comma separated list of sketch names (no path required) or patterns to use in build
+
+          - arduino-boards-fqbn: esp8266:esp8266:huzzah:eesz=4M3M,xtal=80
+            platform-url: https://arduino.esp8266.com/stable/package_esp8266com_index.json
+            sketches-exclude: WhistleSwitch,50Hz,SimpleFrequencyDetector
+
+          - arduino-boards-fqbn: esp32:esp32:featheresp32:FlashFreq=80
+            platform-url: https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+            required-libraries: ESP32 ESP32S2 AnalogWrite
+
+      fail-fast: false
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Arduino Lint
-        uses: arduino/arduino-lint-action@v1
+      - name: Compile all examples
+        uses: ArminJo/arduino-test-compile@v3
         with:
-          library-manager: update
-
-      - name: Install arduino-cli
-        run: curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/local/bin sh
-
-      - name: Update core index
-        run: arduino-cli core update-index --additional-urls "${{ matrix.index_url }}"
-
-      - name: Install core
-        run: arduino-cli core install --additional-urls "${{ matrix.index_url }}" ${{ matrix.core }}
-
-      - name: Install ArduinoJson
-        run: arduino-cli lib install ArduinoJson
-
-      - name: Install AsyncTCP (ESP32)
-        if: ${{ matrix.core == 'esp32:esp32' }}
-        run: ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL=true arduino-cli lib install --git-url https://github.com/mathieucarbou/AsyncTCP#v3.2.5
-        
-      - name: Install ESPAsyncWebserver
-        if: ${{ matrix.core == 'esp32:esp32' }}
-        run: ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL=true arduino-cli lib install --git-url https://github.com/mathieucarbou/ESPAsyncWebServer
-
-      - name: Build v1.2
-        run: arduino-cli compile --library . --warnings none -b ${{ matrix.board }} "ESP32S2_Aperoliker_V1.2/ESP32S2_Aperoliker_V1.2.ino"
-
-
-  platformio:
-    name: "pio:${{ matrix.env }}:${{ matrix.board }}"
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - env: ci-arduino-2
-            board: esp32dev
-          - env: ci-arduino-2
-            board: esp32-s2-saola-1
-          - env: ci-arduino-2
-            board: esp32-s3-devkitc-1
-          - env: ci-arduino-2
-            board: esp32-c3-devkitc-02
-
-          - env: ci-arduino-3
-            board: esp32dev
-          - env: ci-arduino-3
-            board: esp32-s2-saola-1
-          - env: ci-arduino-3
-            board: esp32-s3-devkitc-1
-          - env: ci-arduino-3
-            board: esp32-c3-devkitc-02
-          - env: ci-arduino-3
-            board: esp32-c6-devkitc-1
-          - env: ci-arduino-3
-            board: esp32-h2-devkitm-1
-
-          - env: ci-arduino-310rc1
-            board: esp32dev
-          - env: ci-arduino-310rc1
-            board: esp32-s2-saola-1
-          - env: ci-arduino-310rc1
-            board: esp32-s3-devkitc-1
-          - env: ci-arduino-310rc1
-            board: esp32-c3-devkitc-02
-          - env: ci-arduino-310rc1
-            board: esp32-c6-devkitc-1
-          - env: ci-arduino-310rc1
-            board: esp32-h2-devkitm-1
-
-          - env: ci-esp8266
-            board: huzzah
-          - env: ci-esp8266
-            board: d1_mini
-
-          - env: ci-raspberrypi
-            board: rpipicow
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Cache PlatformIO
-        uses: actions/cache@v4
-        with:
-          key: ${{ runner.os }}-pio
-          path: |
-            ~/.cache/pip
-            ~/.platformio
-
-      - name: Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Build
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade platformio
-      
-      - run: PLATFORMIO_SRC_DIR=examples/CaptivePortal PIO_BOARD=${{ matrix.board }} pio run -e ${{ matrix.env }}
-      - run: PLATFORMIO_SRC_DIR=examples/SimpleServer PIO_BOARD=${{ matrix.board }} pio run -e ${{ matrix.env }}
-      - run: PLATFORMIO_SRC_DIR=examples/Filters PIO_BOARD=${{ matrix.board }} pio run -e ${{ matrix.env }}
-      - run: PLATFORMIO_SRC_DIR=examples/StreamFiles PIO_BOARD=${{ matrix.board }} pio run -e ${{ matrix.env }}
+          arduino-board-fqbn: ${{ matrix.arduino-boards-fqbn }}
+          platform-default-url: ${{ env.PLATFORM_DEFAULT_URL }}
+          platform-url: ${{ matrix.platform-url }}
+          required-libraries: ${{ env.REQUIRED_LIBRARIES }},${{ matrix.required-libraries }}
+          sketch-names: ${{ matrix.sketch-names }}
+          sketches-exclude: ${{ matrix.sketches-exclude }}
+          build-properties: ${{ toJson(matrix.build-properties) }}
