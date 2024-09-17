@@ -23,6 +23,7 @@ jobs:
 
         include:
           - arduino-boards-fqbn: esp32:ESP32-S2
+            platform-url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
             sketch-names: ESP32S2_Aperoliker_V1.2.ino # Comma separated list of sketch names (no path required) or patterns to use in build
 
       fail-fast: false
