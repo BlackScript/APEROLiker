@@ -16,13 +16,13 @@ jobs:
     strategy:
       matrix:
         arduino-boards-fqbn:
-          - arduino:avr:uno
-          - arduino:avr:uno|All-DEBUG
-          - arduino:avr:uno|trace
-          - ESP32-S2 Dev Board
+          #- arduino:avr:uno
+          #- arduino:avr:uno|All-DEBUG
+          #- arduino:avr:uno|trace
+          - ESP32:ESP32-S2 Dev Board
 
         include:
-          - arduino-boards-fqbn: ESP32-S2 Dev Board
+          - arduino-boards-fqbn: ESP32:ESP32-S2 Dev Board
             platform-url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
             sketch-names: ESP32S2_Aperoliker_V1.2.ino # Comma separated list of sketch names (no path required) or patterns to use in build
 
